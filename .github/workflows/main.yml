@@ -35,35 +35,24 @@ jobs:
           chmod +x ~/bin/repo
           echo "$HOME/bin" >> $GITHUB_PATH
 
-      # ========================
-      # CACHE (repo metadata)
-      # ========================
       - name: Cache repo
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.repo
-            ~/android/lineage/.repo
-          key: repo-taq90-${{ github.run_id }}
-          restore-keys: |
-            repo-taq90-
+          path: ~/.repo
+          key: repo-taq90
+          restore-keys: repo-taq90-
 
-      # ========================
-      # CACHE (ccache)
-      # ========================
       - name: Cache ccache
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: ccache-taq90-${{ github.sha }}
-          restore-keys: |
-            ccache-taq90-
+          key: ccache-taq90
+          restore-keys: ccache-taq90-
 
       - name: Init repo
         run: |
           mkdir -p ~/android/lineage
           cd ~/android/lineage
-
           repo init -u https://github.com/LineageOS/android.git -b lineage-15.1
 
       - name: Sync source
@@ -75,24 +64,21 @@ jobs:
         run: |
           cd ~/android/lineage
           git clone https://github.com/Tommy0412/device_denver_TAQ90.git device_tmp
-		  mv device_tmp/device/denver/TAQ90 device/denver/TAQ90
-		  rm -rf device_tmp
+          mv device_tmp/device/denver/TAQ90 device/denver/TAQ90
+          rm -rf device_tmp
 
       - name: Vendor tree
         run: |
           cd ~/android/lineage
-		  git clone https://github.com/Tommy0412/vendor_denver_TAQ90.git vendor_tmp
-		  mv vendor_tmp/vendor/denver/TAQ90 vendor/denver/TAQ90
-		  rm -rf vendor_tmp
-		  
+          git clone https://github.com/Tommy0412/vendor_denver_TAQ90.git vendor_tmp
+          mv vendor_tmp/vendor/denver/TAQ90 vendor/denver/TAQ90
+          rm -rf vendor_tmp
 
       - name: Build
         run: |
           cd ~/android/lineage
-
           export USE_CCACHE=1
           ccache -M 50G
-
           source build/envsetup.sh
           lunch lineage_TAQ90-userdebug
           mka recoveryimage -j$(nproc)
