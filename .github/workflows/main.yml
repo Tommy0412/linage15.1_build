@@ -64,6 +64,7 @@ jobs:
         run: |
           cd ~/android/lineage
           git clone https://github.com/Tommy0412/device_denver_TAQ90.git device_tmp
+          mkdir -p device/denver
           mv device_tmp/device/denver/TAQ90 device/denver/TAQ90
           rm -rf device_tmp
 
@@ -71,6 +72,7 @@ jobs:
         run: |
           cd ~/android/lineage
           git clone https://github.com/Tommy0412/vendor_denver_TAQ90.git vendor_tmp
+          mkdir -p vendor/denver
           mv vendor_tmp/vendor/denver/TAQ90 vendor/denver/TAQ90
           rm -rf vendor_tmp
 
