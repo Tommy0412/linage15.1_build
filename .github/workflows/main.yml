@@ -5,34 +5,62 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-22.04
     timeout-minutes: 720
 
     steps:
-      - name: Prepare packages
+      - name: Free disk space
         run: |
-          sudo apt update
-          sudo apt install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          df -h
 
-      - name: Init Lineage
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential ccache curl flex g++-multilib \
+            gcc-multilib git gnupg gperf imagemagick \
+            lib32ncurses5-dev lib32readline-dev lib32z1-dev \
+            liblz4-tool libncurses5-dev libsdl1.2-dev \
+            libssl-dev libxml2 libxml2-utils lzop \
+            pngcrush rsync schedtool squashfs-tools \
+            xsltproc zip zlib1g-dev
+
+      - name: Install repo tool
+        run: |
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod +x ~/bin/repo
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Init source
         run: |
           mkdir -p ~/android/lineage
           cd ~/android/lineage
           repo init -u https://github.com/LineageOS/android.git -b lineage-15.1
-          repo sync -c --no-tags --no-clone-bundle -j$(nproc)
+          repo sync -c --no-tags --no-clone-bundle -j2
 
-      - name: Clone device and vendor
+      - name: Clone device tree
         run: |
           cd ~/android/lineage
-          mkdir -p device/denver vendor/denver
-          git clone https://github.com/Tommy0412/device_denver_TAQ90/device/denver/TAQ90
-          git clone https://github.com/Tommy0412/vendor_denver_TAQ90/vendor/denver/TAQ90
+          git clone https://github.com/Tommy0412/device_denver_TAQ90.git device/denver/TAQ90
+
+      - name: Clone vendor tree
+        run: |
+          cd ~/android/lineage
+          git clone https://github.com/Tommy0412/vendor_denver_TAQ90.git vendor/denver/TAQ90
 
       - name: Build recovery
         run: |
           cd ~/android/lineage
-          export USE_CCACHE=1
-          ccache -M 50G
           source build/envsetup.sh
           lunch lineage_TAQ90-userdebug
           mka recoveryimage
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery
+          path: ~/android/lineage/out/target/product/TAQ90/recovery.img
