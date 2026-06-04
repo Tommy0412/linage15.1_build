@@ -85,6 +85,8 @@ jobs:
             printf '%s\n' '$(call inherit-product, device/denver/TAQ90/lineage_TAQ90.mk)' \
               > device/denver/TAQ90/lineage.mk
           fi
+          grep -q '^TARGET_USES_MKE2FS *:= *true' device/denver/TAQ90/BoardConfig.mk || \
+            printf '\nTARGET_USES_MKE2FS := true\n' >> device/denver/TAQ90/BoardConfig.mk
           echo "--- lineage.mk ---"
           cat device/denver/TAQ90/lineage.mk
 
