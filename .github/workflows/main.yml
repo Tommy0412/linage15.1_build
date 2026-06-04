@@ -81,35 +81,40 @@ jobs:
           cp -r vendor_tmp/vendor/denver/TAQ90 vendor/denver/TAQ90
           rm -rf vendor_tmp
 
-      - name: Fix ckati Parser & Vendor Makefiles
+      - name: Fix ckati Parser & Remove Broken Vendor Trees
         run: |
           cd ~/android/lineage
           
-          # 1. Force Unix line endings on all .mk files
-          find device/denver vendor/denver -type f -name "*.mk" -exec sed -i 's/\r$//' {} +
+          # Target only your specific unpacked folder to prevent deleting core git files
+          TARGET_DIR="vendor/denver/TAQ90/proprietary/vendor"
           
-          # 2. Strip ALL leading tabs from top-level .mk files (ckati hates them in variable blocks)
+          # 1. Delete hidden Windows/OneDrive metadata files inside your vendor directory safely
+          if [ -d "$TARGET_DIR" ]; then
+            find "$TARGET_DIR" -name ".*" -delete
+            find "$TARGET_DIR" -name "Thumbs.db" -delete
+            find "$TARGET_DIR" -name "desktop.ini" -delete
+            
+            # 2. Find and remove files with illegal spaces or colons in their names
+            find "$TARGET_DIR" -name "* *" -exec rm -v {} +
+            find "$TARGET_DIR" -name "*:*" -exec rm -v {} +
+            
+            # 3. Clean up broken symlinks that confuse the find-copy macro
+            find "$TARGET_DIR" -type l ! -exec test -e {} \; -delete
+          fi
+		  
+          # 4. DELETE BROKEN QUALCOMM/NXP VENDOR TREES (Safe for Rockchip recovery)
+          echo "=== Removing unnecessary vendor trees ==="
+          rm -rf vendor/qcom vendor/codeaurora vendor/nxp
+          
+          # 5. FORCE UNIX ENDINGS & STRIP HIDDEN CHARS
+          echo "=== Sanitizing all .mk files ==="
+          find device/denver vendor/denver -type f -name "*.mk" -exec sed -i 's/\r$//' {} +
+          find device/denver vendor/denver -type f -name "*.mk" -exec sh -c '[ -n "$(tail -c 1 "{}")" ] && echo >> "{}"' \;
           find device/denver vendor/denver -type f -name "*.mk" -exec sed -i 's/^[[:space:]]*\t//g' {} +
           
-          # 3. Ensure every .mk file ends with a clean newline
-          find device/denver vendor/denver -type f -name "*.mk" -exec sh -c '[ -n "$(tail -c 1 "{}")" ] && echo >> "{}"' \;
-          
-          # 4. Overwrite TAQ90-vendor.mk with a guaranteed-safe version
-          #    This removes trailing spaces, fixes continuation, and handles empty dirs gracefully
-          cat > vendor/denver/TAQ90/TAQ90-vendor.mk << 'VENDOR_EOF'
-          # Auto-generated safe vendor file for recovery build
-          PRODUCT_COPY_FILES += \
-              $(call find-copy-subdir-files,*,vendor/denver/TAQ90/proprietary/vendor,vendor)
-          VENDOR_EOF
-          
-          # 5. Ensure the source directory actually exists (prevents empty expansion)
-          mkdir -p vendor/denver/TAQ90/proprietary/vendor
-          
-          # 6. Verify the fix
-          echo "=== TAQ90-vendor.mk content (cat -A shows hidden chars) ==="
-          cat -A vendor/denver/TAQ90/TAQ90-vendor.mk
-          echo "=== Checking for leading tabs ==="
-          grep -Pn '^\t' vendor/denver/TAQ90/*.mk device/denver/TAQ90/*.mk || echo "✅ Clean: No leading tabs found."
+          # 6. VERIFY FIX
+          echo "=== Checking if qcom/codeaurora are gone ==="
+          ls -d vendor/qcom vendor/codeaurora 2>/dev/null && echo "⚠️ Still exists!" || echo "✅ Qualcomm trees removed successfully."
 
       - name: Debug Makefile Syntax Errors
         run: |
