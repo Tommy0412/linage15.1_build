@@ -89,8 +89,10 @@ jobs:
                -name '*.fstab' -o -name '*.txt' -o -name '*.prop' -o \
                -name '*.xml' -o -name 'AndroidProducts.mk' \) \
             -print0 | xargs -0 sed -i 's/\r$//'
-          find vendor/denver/TAQ90 -type f \( -name '*#*' -o -name '*,*' \) -delete
+          find vendor/denver/TAQ90 -depth -print0 | grep -zE '[#,\[\]]' | xargs -0r rm -rf
           find vendor/denver/TAQ90/proprietary -type f -name '*.mk' -delete
+          echo "--- unsafe vendor blob paths after cleanup ---"
+          find vendor/denver/TAQ90/proprietary -print | grep -E '[#,\[\]]|\.mk$' || true
           if [ ! -f device/denver/TAQ90/lineage.mk ]; then
             printf '%s\n' '$(call inherit-product, device/denver/TAQ90/lineage_TAQ90.mk)' \
               > device/denver/TAQ90/lineage.mk
