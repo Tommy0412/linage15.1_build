@@ -80,7 +80,13 @@ jobs:
           ls -l device/denver/TAQ90/lineage_TAQ90.mk
           export USE_CCACHE=1
           ccache -M 50G
+          echo "CHECK DEVICE FILES"
+          ls device/denver/TAQ90
+          echo "CHECK PRODUCT FILE"
+          cat device/denver/TAQ90/AndroidProducts.mk
           source build/envsetup.sh
+          find device/denver/TAQ90 -name AndroidProducts.mk
+          cat device/denver/TAQ90/AndroidProducts.mk
           lunch lineage_TAQ90-userdebug
           mka recoveryimage -j$(nproc)
 
