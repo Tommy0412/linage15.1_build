@@ -84,37 +84,47 @@ jobs:
       - name: Fix ckati Parser & Remove Broken Vendor Trees
         run: |
           cd ~/android/lineage
-          
-          # Target only your specific unpacked folder to prevent deleting core git files
           TARGET_DIR="vendor/denver/TAQ90/proprietary/vendor"
-          
-          # 1. Delete hidden Windows/OneDrive metadata files inside your vendor directory safely
+
+          echo "=== 1. Cleaning vendor directory windows bloat ==="
           if [ -d "$TARGET_DIR" ]; then
-            find "$TARGET_DIR" -name ".*" -delete
-            find "$TARGET_DIR" -name "Thumbs.db" -delete
-            find "$TARGET_DIR" -name "desktop.ini" -delete
+            # Clean metadata safely using explicit name flags
+            find "$TARGET_DIR" -name ".*" -delete 2>/dev/null || true
+            find "$TARGET_DIR" -name "Thumbs.db" -delete 2>/dev/null || true
+            find "$TARGET_DIR" -name "desktop.ini" -delete 2>/dev/null || true
             
-            # 2. Find and remove files with illegal spaces or colons in their names
-            find "$TARGET_DIR" -name "* *" -exec rm -v {} +
-            find "$TARGET_DIR" -name "*:*" -exec rm -v {} +
-            
-            # 3. Clean up broken symlinks that confuse the find-copy macro
-            find "$TARGET_DIR" -type l ! -exec test -e {} \; -delete
+            # Clean files containing spaces or colons safely without breaking loop tokens
+            find "$TARGET_DIR" -type f | grep -E ' |:' | while read -r broken_file; do
+              echo "Removing malformed path: $broken_file"
+              rm -f "$broken_file"
+            fi
+
+            # Clean broken symlinks safely using native bash file checks
+            find "$TARGET_DIR" -type l | while read -r symlink; do
+              if [ ! -e "$symlink" ]; then
+                echo "Removing broken symlink: $symlink"
+                rm -f "$symlink"
+              fi
+            fi
           fi
-		  
-          # 4. DELETE BROKEN QUALCOMM/NXP VENDOR TREES (Safe for Rockchip recovery)
-          echo "=== Removing unnecessary vendor trees ==="
+
+          echo "=== 2. Removing unnecessary vendor trees ==="
           rm -rf vendor/qcom vendor/codeaurora vendor/nxp
-          
-          # 5. FORCE UNIX ENDINGS & STRIP HIDDEN CHARS
-          echo "=== Sanitizing all .mk files ==="
-          find device/denver vendor/denver -type f -name "*.mk" -exec sed -i 's/\r$//' {} +
-          find device/denver vendor/denver -type f -name "*.mk" -exec sh -c '[ -n "$(tail -c 1 "{}")" ] && echo >> "{}"' \;
-          find device/denver vendor/denver -type f -name "*.mk" -exec sed -i 's/^[[:space:]]*\t//g' {} +
-          
-          # 6. VERIFY FIX
-          echo "=== Checking if qcom/codeaurora are gone ==="
-          ls -d vendor/qcom vendor/codeaurora 2>/dev/null && echo "⚠️ Still exists!" || echo "✅ Qualcomm trees removed successfully."
+
+          echo "=== 3. Sanitizing all makefiles ==="
+          find device/denver vendor/denver -type f -name "*.mk" | while read -r mk_file; do
+            sed -i 's/\r$//' "$mk_file"
+            sed -i 's/^[[:space:]]*\t//g' "$mk_file"
+            # Ensure proper trailing newline ending
+            [ -n "$(tail -c 1 "$mk_file")" ] && echo >> "$mk_file"
+          done
+
+          echo "=== 4. Verifying environment ==="
+          if [ -d "vendor/qcom" ] || [ -d "vendor/codeaurora" ]; then
+            echo "⚠️ Qualcomm trees still exist!"
+          else
+            echo "✅ Environment sanitized successfully."
+          fi
 
       - name: Debug Makefile Syntax Errors
         run: |
