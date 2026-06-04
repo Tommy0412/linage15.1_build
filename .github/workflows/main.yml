@@ -82,6 +82,8 @@ jobs:
             printf '%s\n' '$(call inherit-product, device/denver/TAQ90/lineage_TAQ90.mk)' \
               > device/denver/TAQ90/lineage.mk
           fi
+          echo "--- lineage.mk ---"
+          cat device/denver/TAQ90/lineage.mk
 
       - name: Build recovery
         run: |
