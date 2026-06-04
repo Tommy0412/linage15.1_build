@@ -104,10 +104,10 @@ jobs:
       - name: Debug Makefile Syntax Errors
         run: |
           cd ~/android/lineage
-          echo "=========================================="
-          echo "1. Checking build/core/Makefile"
-          echo "=========================================="
-          grep -nP '^\t' build/core/Makefile | cat -A
+          echo "=== EXACT LINE 34 of build/core/Makefile ==="
+          sed -n '34p' build/core/Makefile | cat -A | head -n 1
+          echo "=== Lines 32-36 for context ==="
+          sed -n '32,36p' build/core/Makefile | cat -A
           
           echo "=========================================="
           echo "2. Searching for hidden TABS in device/vendor trees"
