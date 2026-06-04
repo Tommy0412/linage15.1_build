@@ -58,6 +58,7 @@ jobs:
         run: |
           cd ~/android/lineage
           git clone --depth=1 https://github.com/Tommy0412/device_denver_TAQ90.git device_tmp
+          rm -rf device/denver/TAQ90
           mkdir -p device/denver
           cp -r device_tmp/device/denver/TAQ90 device/denver/TAQ90
           rm -rf device_tmp
@@ -66,6 +67,7 @@ jobs:
         run: |
           cd ~/android/lineage
           git clone --depth=1 https://github.com/Tommy0412/vendor_denver_TAQ90.git vendor_tmp
+          rm -rf vendor/denver/TAQ90
           mkdir -p vendor/denver
           cp -r vendor_tmp/vendor/denver/TAQ90 vendor/denver/TAQ90
           rm -rf vendor_tmp
@@ -78,6 +80,7 @@ jobs:
                -name '*.fstab' -o -name '*.txt' -o -name '*.prop' -o \
                -name '*.xml' -o -name 'AndroidProducts.mk' \) \
             -print0 | xargs -0 sed -i 's/\r$//'
+          find vendor/denver/TAQ90 -name '*#*' -type f -delete
           if [ ! -f device/denver/TAQ90/lineage.mk ]; then
             printf '%s\n' '$(call inherit-product, device/denver/TAQ90/lineage_TAQ90.mk)' \
               > device/denver/TAQ90/lineage.mk
