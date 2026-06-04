@@ -93,19 +93,19 @@ jobs:
             find "$TARGET_DIR" -name "Thumbs.db" -delete 2>/dev/null || true
             find "$TARGET_DIR" -name "desktop.ini" -delete 2>/dev/null || true
             
-            # Clean files containing spaces or colons safely without breaking loop tokens
+            # Clean files containing spaces or colons safely
             find "$TARGET_DIR" -type f | grep -E ' |:' | while read -r broken_file; do
               echo "Removing malformed path: $broken_file"
               rm -f "$broken_file"
-            fi
+            done
 
-            # Clean broken symlinks safely using native bash file checks
+            # Clean broken symlinks safely
             find "$TARGET_DIR" -type l | while read -r symlink; do
               if [ ! -e "$symlink" ]; then
                 echo "Removing broken symlink: $symlink"
                 rm -f "$symlink"
               fi
-            fi
+            done
           fi
 
           echo "=== 2. Removing unnecessary vendor trees ==="
