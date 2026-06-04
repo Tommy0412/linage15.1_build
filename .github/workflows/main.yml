@@ -1,19 +1,17 @@
 name: Lineage 15.1 TAQ90
-
 on:
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 720
-
     steps:
       - name: Free disk space
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
+            /usr/local/share/boost /opt/hostedtoolcache/CodeQL \
+            /usr/local/.ghcup /usr/share/swift
+          sudo docker image prune -af || true
           df -h
 
       - name: Install dependencies
@@ -35,64 +33,65 @@ jobs:
           chmod +x ~/bin/repo
           echo "$HOME/bin" >> $GITHUB_PATH
 
-      - name: Cache repo
-        uses: actions/cache@v4
-        with:
-          path: ~/.repo
-          key: repo-taq90
-          restore-keys: repo-taq90-
-
       - name: Cache ccache
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: ccache-taq90
+          key: ccache-taq90-${{ github.run_id }}
           restore-keys: ccache-taq90-
 
       - name: Init repo
         run: |
           mkdir -p ~/android/lineage
           cd ~/android/lineage
-          repo init -u https://github.com/LineageOS/android.git -b lineage-15.1
+          git config --global user.email "build@ci.local"
+          git config --global user.name "CI Build"
+          repo init -u https://github.com/LineageOS/android.git -b lineage-15.1 --depth=1
 
       - name: Sync source
         run: |
           cd ~/android/lineage
-          repo sync -c --no-tags --no-clone-bundle --optimized-fetch --prune -j8
+          repo sync -c --no-tags --no-clone-bundle --optimized-fetch \
+            --prune --force-sync -j$(nproc)
 
-      - name: Device tree
+      - name: Clone device tree
         run: |
           cd ~/android/lineage
-          git clone https://github.com/Tommy0412/device_denver_TAQ90.git device_tmp
-          cp -r device_tmp/device/ .
+          git clone --depth=1 https://github.com/Tommy0412/device_denver_TAQ90.git device_tmp
+          mkdir -p device/denver
+          cp -r device_tmp/device/denver/TAQ90 device/denver/TAQ90
           rm -rf device_tmp
 
-      - name: Vendor tree
+      - name: Clone vendor tree
         run: |
           cd ~/android/lineage
-          git clone https://github.com/Tommy0412/vendor_denver_TAQ90.git vendor_tmp
-          cp -r vendor_tmp/vendor/ .
+          git clone --depth=1 https://github.com/Tommy0412/vendor_denver_TAQ90.git vendor_tmp
+          mkdir -p vendor/denver
+          cp -r vendor_tmp/vendor/denver/TAQ90 vendor/denver/TAQ90
           rm -rf vendor_tmp
 
-      - name: Build
+      - name: Normalize device and vendor line endings
         run: |
           cd ~/android/lineage
-          ls -l device/denver/TAQ90/lineage_TAQ90.mk
-          export USE_CCACHE=1
-          ccache -M 50G
-          echo "CHECK DEVICE FILES"
-          ls device/denver/TAQ90
-          echo "CHECK PRODUCT FILE"
-          cat device/denver/TAQ90/AndroidProducts.mk
-          echo "TARGET_DEVICE=$TARGET_DEVICE"
-          source build/envsetup.sh
-          find device/denver/TAQ90 -name AndroidProducts.mk
-          cat device/denver/TAQ90/AndroidProducts.mk
-          get_build_var TARGET_DEVICE
-          mka recoveryimage -j$(nproc)
+          find device/denver/TAQ90 vendor/denver/TAQ90 -type f \
+            \( -name '*.mk' -o -name '*.sh' -o -name '*.rc' -o \
+               -name '*.fstab' -o -name '*.txt' -o -name '*.prop' -o \
+               -name '*.xml' -o -name 'AndroidProducts.mk' \) \
+            -print0 | xargs -0 sed -i 's/\r$//'
 
-      - name: Upload
+      - name: Build recovery
+        run: |
+          cd ~/android/lineage
+          export USE_CCACHE=1
+          ccache -M 10G
+          source build/envsetup.sh
+          echo "--- AndroidProducts.mk ---"
+          cat device/denver/TAQ90/AndroidProducts.mk
+          lunch lineage_TAQ90-userdebug
+          make -j$(nproc) recoveryimage
+
+      - name: Upload recovery
         uses: actions/upload-artifact@v4
         with:
-          name: recovery
+          name: recovery-TAQ90
           path: ~/android/lineage/out/target/product/TAQ90/recovery.img
