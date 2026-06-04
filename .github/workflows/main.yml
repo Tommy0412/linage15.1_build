@@ -88,7 +88,7 @@ jobs:
           source build/envsetup.sh
           find device/denver/TAQ90 -name AndroidProducts.mk
           cat device/denver/TAQ90/AndroidProducts.mk
-          lunch lineage_TAQ90-userdebug
+          get_build_var TARGET_DEVICE
           mka recoveryimage -j$(nproc)
 
       - name: Upload
