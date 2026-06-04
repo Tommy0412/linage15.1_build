@@ -93,31 +93,31 @@ jobs:
             find "$TARGET_DIR" -name "Thumbs.db" -delete 2>/dev/null || true
             find "$TARGET_DIR" -name "desktop.ini" -delete 2>/dev/null || true
             
-            # Clean files containing spaces or colons safely
-            find "$TARGET_DIR" -type f | grep -E ' |:' | while read -r broken_file; do
+            # Appended || true so grep doesn't crash the runner when zero bad files are found
+            find "$TARGET_DIR" -type f 2>/dev/null | grep -E ' |:' | while read -r broken_file; do
               echo "Removing malformed path: $broken_file"
               rm -f "$broken_file"
-            done
+            done || true
 
             # Clean broken symlinks safely
-            find "$TARGET_DIR" -type l | while read -r symlink; do
+            find "$TARGET_DIR" -type l 2>/dev/null | while read -r symlink; do
               if [ ! -e "$symlink" ]; then
                 echo "Removing broken symlink: $symlink"
                 rm -f "$symlink"
               fi
-            done
+            done || true
           fi
 
           echo "=== 2. Removing unnecessary vendor trees ==="
-          rm -rf vendor/qcom vendor/codeaurora vendor/nxp
+          rm -rf vendor/qcom vendor/codeaurora vendor/nxp || true
 
           echo "=== 3. Sanitizing all makefiles ==="
-          find device/denver vendor/denver -type f -name "*.mk" | while read -r mk_file; do
+          find device/denver vendor/denver -type f -name "*.mk" 2>/dev/null | while read -r mk_file; do
             sed -i 's/\r$//' "$mk_file"
             sed -i 's/^[[:space:]]*\t//g' "$mk_file"
             # Ensure proper trailing newline ending
-            [ -n "$(tail -c 1 "$mk_file")" ] && echo >> "$mk_file"
-          done
+            [ -n "$(tail -c 1 "$mk_file")" ] && echo >> "$mk_file" || true
+          done || true
 
           echo "=== 4. Verifying environment ==="
           if [ -d "vendor/qcom" ] || [ -d "vendor/codeaurora" ]; then
