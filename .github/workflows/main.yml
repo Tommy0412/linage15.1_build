@@ -240,22 +240,39 @@ jobs:
             echo "✅ Safe mkbootimg args added"
           fi
 
-      - name: Build recovery
+      - name: Free Disk Space for Full ROM Build
         run: |
           cd ~/android/lineage
-          export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-          export PATH="$JAVA_HOME/bin:$PATH"
-          java -version
-          export USE_CCACHE=1
-          ccache -M 10G
-          source build/envsetup.sh
-          echo "--- AndroidProducts.mk ---"
-          cat device/denver/TAQ90/AndroidProducts.mk
-          lunch lineage_TAQ90-userdebug
-          make -j$(nproc) recoveryimage
+          # Safely clear heavy intermediates without breaking host toolchain cache
+          rm -rf out/target/common/obj/JAVA_LIBRARIES \
+               out/target/product/TAQ90/obj \
+               out/host/linux-x86/obj/SHARED_LIBRARIES \
+               out/host/linux-x86/obj/STATIC_LIBRARIES 2>/dev/null || true
+          echo "✅ Freed disk space. Current usage:"
+          df -h .
 
-      - name: Upload recovery
-        uses: actions/upload-artifact@v4
+      - name: Build Full LineageOS ROM (Bacon)
+        run: |
+          cd ~/android/lineage
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export CKATI_FLAGS=--use_find_emulator
+          export JACK_SERVER_VM_ARGUMENTS="-Xmx4096m"
+          export PYTHON=python2
+          source build/envsetup.sh
+          lunch lineage_TAQ90-userdebug
+          
+          # 'bacon' builds the system and packages it into a flashable ZIP
+          make -j$(nproc) bacon
+
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v2
         with:
-          name: recovery-TAQ90
-          path: ~/android/lineage/out/target/product/TAQ90/recovery.img
+          tag_name: "v${{ github.run_number }}"
+          name: "Lineage 15.1 TAQ90 - Build #${{ github.run_number }}"
+          draft: false
+          prerelease: false
+          files: |
+            ~/android/lineage/out/target/product/TAQ90/lineage-*.zip
+            ~/android/lineage/out/target/product/TAQ90/recovery.img
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
