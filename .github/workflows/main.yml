@@ -240,6 +240,27 @@ jobs:
             echo "✅ Safe mkbootimg args added"
           fi
 
+      - name: Create telephony-ext Stub for Tablet Build
+        run: |
+          cd ~/android/lineage
+          mkdir -p device/denver/TAQ90/telephony-ext
+          cat > device/denver/TAQ90/telephony-ext/Android.mk << 'MK_EOF'
+          LOCAL_PATH := $(call my-dir)
+          include $(CLEAR_VARS)
+          LOCAL_MODULE := telephony-ext
+          LOCAL_SRC_FILES := stub.java
+          LOCAL_MODULE_TAGS := optional
+          LOCAL_MODULE_CLASS := JAVA_LIBRARIES
+          include $(BUILD_JAVA_LIBRARY)
+          MK_EOF
+          
+          echo "package android.telephony; public class TelephonyExtStub {}" > device/denver/TAQ90/telephony-ext/stub.java
+          
+          # Safely append to device.mk only once
+          grep -q "PRODUCT_PACKAGES += telephony-ext" device/denver/TAQ90/device.mk || \
+            echo "PRODUCT_PACKAGES += telephony-ext" >> device/denver/TAQ90/device.mk
+          echo "✅ telephony-ext stub created to satisfy ninja dependency"
+
       - name: Free Disk Space for Full ROM Build
         run: |
           cd ~/android/lineage
