@@ -6,13 +6,31 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 720
     steps:
-      - name: Free disk space
+      - name: Extreme Runner Cleanup (Free 15GB)
         run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
-            /usr/local/share/boost /opt/hostedtoolcache/CodeQL \
-            /usr/local/.ghcup /usr/share/swift
+          echo "=== Nuking pre-installed runner garbage ==="
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/lib/android \
+            /usr/local/share/boost \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/.ghcup \
+            /usr/share/swift \
+            /usr/local/share/powershell \
+            /usr/share/miniconda \
+            /usr/local/share/vcpkg \
+            /usr/local/share/chromium \
+            /opt/microsoft \
+            /opt/google \
+            /opt/az \
+            /usr/local/lib/node_modules \
+            /var/lib/apt/lists/* \
+            /var/cache/apt/archives/*
+          
           sudo docker image prune -af || true
-          df -h
+          echo "✅ Disk space reclaimed:"
+          df -h /
 
       - name: Install dependencies
         run: |
