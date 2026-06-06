@@ -322,6 +322,21 @@ jobs:
           echo "✅ Freed disk space. Current usage:"
           df -h .
 
+      - name: Repair Corrupted WebView Prebuilt
+        run: |
+          cd ~/android/lineage
+          WV_APK="external/chromium-webview/prebuilt/arm/webview.apk"
+          
+          echo "=== Checking webview.apk integrity ==="
+          if [ ! -f "$WV_APK" ] || [ ! -s "$WV_APK" ]; then
+            echo "⚠️ webview.apk is missing or 0 bytes! Fetching from LineageOS GitHub..."
+            mkdir -p external/chromium-webview/prebuilt/arm/
+            curl -fL -o "$WV_APK" "https://raw.githubusercontent.com/LineageOS/android_external_chromium-webview_prebuilt_arm/lineage-15.1/webview.apk"
+            echo "✅ webview.apk downloaded successfully."
+          else
+            echo "✅ webview.apk exists and is valid. Size: $(ls -lh "$WV_APK" | awk '{print $5}')"
+          fi
+
       - name: Build Full LineageOS ROM (Bacon)
         run: |
           cd ~/android/lineage
