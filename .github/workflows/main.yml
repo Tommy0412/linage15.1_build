@@ -157,35 +157,6 @@ jobs:
           lunch lineage_TAQ90-userdebug &> /dev/null
           make -n recoveryimage 2>&1 | grep -iE "error|warning|commands commence" || echo "✅ Parse validation passed!"
 
-      - name: Debug Makefile Syntax Errors
-        run: |
-          cd ~/android/lineage
-          echo "=== EXACT LINE 34 of build/core/Makefile ==="
-          sed -n '34p' build/core/Makefile | cat -A | head -n 1
-          echo "=== Lines 32-36 for context ==="
-          sed -n '32,36p' build/core/Makefile | cat -A
-          
-          echo "=========================================="
-          echo "2. Searching for hidden TABS in device/vendor trees"
-          echo "=========================================="
-          grep -rnP '^\t' --include="*.mk" device/denver/ vendor/denver/ || echo "No leading tabs found."
-          
-          echo "=========================================="
-          echo "3. Checking the last included file (rcs-service)"
-          echo "=========================================="
-          cat -A vendor/qcom/opensource/rcs-service/Android.mk | head -n 15 || echo "File not found."
-          
-          echo "=========================================="
-          echo "4. Checking for missing 'endif' in device tree"
-          echo "=========================================="
-          for f in device/denver/TAQ90/*.mk; do
-            if [ -f "$f" ]; then
-              if_count=$(grep -c -E 'ifeq|ifneq' "$f" || true)
-              endif_count=$(grep -c 'endif' "$f" || true)
-              echo "$f -> ifeq/ifneq: $if_count | endif: $endif_count"
-            fi
-          done
-
       - name: Harden Build Environment for Lineage 15.1 CI
         run: |
           cd ~/android/lineage
@@ -348,5 +319,9 @@ jobs:
           files: |
             ~/android/lineage/out/target/product/TAQ90/lineage-*.zip
             ~/android/lineage/out/target/product/TAQ90/recovery.img
+            ~/android/lineage/out/target/product/TAQ90/boot.img
+            ~/android/lineage/out/target/product/TAQ90/vendor.img
+            ~/android/lineage/out/target/product/TAQ90/system.img
+            ~/android/lineage/out/target/product/TAQ90/install.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
