@@ -1,6 +1,8 @@
 name: Lineage 15.1 TAQ90
 on:
   workflow_dispatch:
+permissions:
+  contents: write 
 jobs:
   build:
     runs-on: ubuntu-22.04
