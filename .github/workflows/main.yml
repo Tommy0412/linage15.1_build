@@ -286,27 +286,6 @@ jobs:
           touch out/target/product/TAQ90/obj/NOTICE.xml
           echo "✅ Dummy NOTICE files created"
 
-      - name: Build telephony-ext locally for LineageSDK (Tablet Fix)
-        run: |
-          cd ~/android/lineage
-          echo "=== Copying real telephony-ext source to device tree ==="
-          mkdir -p device/denver/TAQ90/telephony-ext
-          
-          # Copy the actual, official source code from the AOSP tree
-          if [ -d "packages/services/Telephony/telephony-ext" ]; then
-            cp -r packages/services/Telephony/telephony-ext/* device/denver/TAQ90/telephony-ext/
-            echo "✅ Copied real telephony-ext source code."
-          else
-            echo "❌ packages/services/Telephony/telephony-ext not found!"
-            exit 1
-          fi
-          
-          # Ensure it's added to PRODUCT_PACKAGES so it gets installed
-          grep -q "PRODUCT_PACKAGES += telephony-ext" device/denver/TAQ90/device.mk || \
-            echo "PRODUCT_PACKAGES += telephony-ext" >> device/denver/TAQ90/device.mk
-            
-          echo "✅ telephony-ext will now be built locally and satisfy lineage-sdk"
-
       - name: Fix Jack Server SSL Error (Ubuntu 22.04)
         run: |
           cd ~/android/lineage
