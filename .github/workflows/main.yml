@@ -155,51 +155,6 @@ jobs:
           lunch lineage_TAQ90-userdebug &> /dev/null
           make -n recoveryimage 2>&1 | grep -iE "error|warning|commands commence" || echo "✅ Parse validation passed!"
 
-      - name: Fix ckati Parser & Remove Broken Vendor Trees
-        run: |
-          cd ~/android/lineage
-          TARGET_DIR="vendor/denver/TAQ90/proprietary/vendor"
-
-          echo "=== 1. Cleaning vendor directory windows bloat ==="
-          if [ -d "$TARGET_DIR" ]; then
-            # Clean metadata safely using explicit name flags
-            find "$TARGET_DIR" -name ".*" -delete 2>/dev/null || true
-            find "$TARGET_DIR" -name "Thumbs.db" -delete 2>/dev/null || true
-            find "$TARGET_DIR" -name "desktop.ini" -delete 2>/dev/null || true
-            
-            # Appended || true so grep doesn't crash the runner when zero bad files are found
-            find "$TARGET_DIR" -type f 2>/dev/null | grep -E ' |:' | while read -r broken_file; do
-              echo "Removing malformed path: $broken_file"
-              rm -f "$broken_file"
-            done || true
-
-            # Clean broken symlinks safely
-            find "$TARGET_DIR" -type l 2>/dev/null | while read -r symlink; do
-              if [ ! -e "$symlink" ]; then
-                echo "Removing broken symlink: $symlink"
-                rm -f "$symlink"
-              fi
-            done || true
-          fi
-
-          echo "=== 2. Removing unnecessary vendor trees ==="
-          rm -rf vendor/qcom vendor/codeaurora vendor/nxp || true
-
-          echo "=== 3. Sanitizing all makefiles ==="
-          find device/denver vendor/denver -type f -name "*.mk" 2>/dev/null | while read -r mk_file; do
-            sed -i 's/\r$//' "$mk_file"
-            sed -i 's/^[[:space:]]*\t//g' "$mk_file"
-            # Ensure proper trailing newline ending
-            [ -n "$(tail -c 1 "$mk_file")" ] && echo >> "$mk_file" || true
-          done || true
-
-          echo "=== 4. Verifying environment ==="
-          if [ -d "vendor/qcom" ] || [ -d "vendor/codeaurora" ]; then
-            echo "⚠️ Qualcomm trees still exist!"
-          else
-            echo "✅ Environment sanitized successfully."
-          fi
-
       - name: Debug Makefile Syntax Errors
         run: |
           cd ~/android/lineage
@@ -303,55 +258,6 @@ jobs:
           prebuilts/sdk/tools/jack-admin kill-server 2>/dev/null || true
           rm -rf ~/.jack-server ~/.jack 2>/dev/null || true
           echo "✅ Jack server SSL environment fixed"
-
-      - name: Create Bulletproof telephony-ext Stub and Patch Source
-        run: |
-          cd ~/android/lineage
-          
-          # 1. Create directory structure for the stub
-          mkdir -p device/denver/TAQ90/telephony-ext/org/codeaurora/internal
-          
-          # 2. Write the Android.mk rule for Ninja
-          cat << 'EOF' > device/denver/TAQ90/telephony-ext/Android.mk
-          LOCAL_PATH := $(call my-dir)
-          include $(CLEAR_VARS)
-          LOCAL_MODULE := telephony-ext
-          LOCAL_SRC_FILES := $(call all-java-files-under, .)
-          LOCAL_MODULE_TAGS := optional
-          LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-          include $(BUILD_JAVA_LIBRARY)
-          EOF
-          
-          # 3. Create the missing IExtTelephony interface and CodeAurora classes
-          cat << 'EOF' > device/denver/TAQ90/telephony-ext/org/codeaurora/internal/IExtTelephony.java
-          package org.codeaurora.internal;
-          public interface IExtTelephony {
-              public int getCurrentPhoneType();
-              public boolean isSMSPromptEnabled();
-          }
-          EOF
-          
-          cat << 'EOF' > device/denver/TAQ90/telephony-ext/org/codeaurora/TelephonyProperties.java
-          package org.codeaurora;
-          public class TelephonyProperties {}
-          EOF
-          
-          cat << 'EOF' > device/denver/TAQ90/telephony-ext/stub.java
-          package android.telephony;
-          public class TelephonyExtStub {}
-          EOF
-          
-          # 4. Enforce the product package inclusion
-          grep -q "PRODUCT_PACKAGES += telephony-ext" device/denver/TAQ90/device.mk || \
-            echo "PRODUCT_PACKAGES += telephony-ext" >> device/denver/TAQ90/device.mk
-          
-          # 5. Empty out the specific Lineage utility file to prevent internal SDK mismatch
-          cat << 'EOF' > lineage-sdk/sdk/src/java/org/lineageos/internal/util/TelephonyExtUtils.java
-          package org.lineageos.internal.util;
-          public class TelephonyExtUtils {}
-          EOF
-          
-          echo "✅ Complete telephony environment mocked safely!"
 
       - name: Bulletproof WebView Prebuilt Fix (Git LFS)
         run: |
