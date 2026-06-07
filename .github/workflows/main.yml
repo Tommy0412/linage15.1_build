@@ -86,8 +86,7 @@ jobs:
       - name: Cache ccache
         uses: actions/cache@v4
         with:
-          path: ~/.ccache
-          # Use runner.os so the key is the same every time (e.g., ccache-taq90-Linux)
+          path: /home/runner/.ccache
           key: ccache-taq90-${{ runner.os }}
           restore-keys: |
             ccache-taq90-${{ runner.os }}
@@ -291,7 +290,7 @@ jobs:
           export JACK_SERVER_VM_ARGUMENTS="-Xmx4096m"
           export PYTHON=python2
           
-          # CRITICAL: Enable ccache for this specific shell session
+          export CCACHE_DIR=/home/runner/.ccache
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
           ccache -M 5G  # Give it 5GB of space
@@ -308,6 +307,20 @@ jobs:
           echo "=== CCACHE STATISTICS (Look for 'Cache hit') ==="
           echo "=========================================="
           ccache -s
+
+      - name: Verify Cache Directory Exists Before Saving
+        run: |
+          echo "=== Checking if ccache directory actually has data ==="
+          if [ -d "/home/runner/.ccache" ]; then
+            echo "✅ Directory exists."
+            echo "=== Directory contents (first 10 files) ==="
+            ls -la /home/runner/.ccache | head -n 10
+            echo "=== Total size of ccache directory ==="
+            du -sh /home/runner/.ccache
+          else
+            echo "❌ FATAL: /home/runner/.ccache DOES NOT EXIST!"
+            exit 1
+          fi
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
