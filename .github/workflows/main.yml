@@ -304,16 +304,14 @@ jobs:
           rm -rf ~/.jack-server ~/.jack 2>/dev/null || true
           echo "✅ Jack server SSL environment fixed"
 
-      - name: Free Disk Space for Full ROM Build
+      - name: Remove hardcoded telephony-ext from lineage-sdk
         run: |
           cd ~/android/lineage
-          # Safely clear heavy intermediates without breaking host toolchain cache
-          rm -rf out/target/common/obj/JAVA_LIBRARIES \
-               out/target/product/TAQ90/obj \
-               out/host/linux-x86/obj/SHARED_LIBRARIES \
-               out/host/linux-x86/obj/STATIC_LIBRARIES 2>/dev/null || true
-          echo "✅ Freed disk space. Current usage:"
-          df -h .
+          echo "=== Removing hardcoded telephony-ext from lineage-sdk ==="
+          # This removes the blind dependency that ignores TARGET_USES_NO_TELEPHONY
+          sed -i 's/telephony-ext//g' lineage-sdk/sdk/Android.mk
+          sed -i 's/telephony-ext//g' lineage-sdk/Android.mk
+          echo "✅ lineage-sdk will no longer demand telephony-ext"
 
       - name: Bulletproof WebView Prebuilt Fix (Git LFS)
         run: |
@@ -354,6 +352,17 @@ jobs:
             ls -la
             exit 1
           fi
+
+      - name: Free Disk Space for Full ROM Build
+        run: |
+          cd ~/android/lineage
+          # Safely clear heavy intermediates without breaking host toolchain cache
+          rm -rf out/target/common/obj/JAVA_LIBRARIES \
+               out/target/product/TAQ90/obj \
+               out/host/linux-x86/obj/SHARED_LIBRARIES \
+               out/host/linux-x86/obj/STATIC_LIBRARIES 2>/dev/null || true
+          echo "✅ Freed disk space. Current usage:"
+          df -h .
 
       - name: Build Full LineageOS ROM (Bacon)
         run: |
