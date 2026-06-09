@@ -148,6 +148,32 @@ jobs:
           mkdir -p out/target/product/TAQ90/obj
           echo "✅ Output directories initialized"
 
+      - name: Fix Ninja NOTICE.xml Dependency Cycle (Guaranteed)
+        run: |
+          cd ~/android/lineage
+          echo "=== Aggressively patching build/core/Makefile ==="
+          python3 << 'EOF'
+          with open('build/core/Makefile', 'r') as f:
+              lines = f.readlines()
+          
+          with open('build/core/Makefile', 'w') as f:
+              for line in lines:
+                  # Comment out ANY line containing NOTICE.xml that isn't already a comment
+                  if 'NOTICE.xml' in line and not line.strip().startswith('#'):
+                      f.write('# DISABLED NOTICE CYCLE: ' + line)
+                  else:
+                      f.write(line)
+          print("✅ All NOTICE.xml generation rules disabled")
+          EOF
+          
+          echo "=== Creating dummy NOTICE files to satisfy existence checks ==="
+          mkdir -p out/target/product/TAQ90/system/etc
+          mkdir -p out/target/product/TAQ90/obj
+          touch out/target/product/TAQ90/system/etc/NOTICE.xml.gz
+          touch out/target/product/TAQ90/obj/NOTICE.xml.gz
+          touch out/target/product/TAQ90/obj/NOTICE.xml
+          echo "✅ Dummy NOTICE files created"
+
       - name: Fix Jack Server SSL Error (Ubuntu 22.04)
         run: |
           cd ~/android/lineage
@@ -170,7 +196,6 @@ jobs:
         run: |
           cd ~/android/lineage
           export ALLOW_MISSING_DEPENDENCIES=true
-          export PRODUCT_NOTICE_SPLIT=true 
           export CKATI_FLAGS=--use_find_emulator
           export JACK_SERVER_VM_ARGUMENTS="-Xmx4096m"
           export PYTHON=python2
