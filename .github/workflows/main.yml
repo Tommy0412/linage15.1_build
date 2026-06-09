@@ -170,6 +170,7 @@ jobs:
         run: |
           cd ~/android/lineage
           export ALLOW_MISSING_DEPENDENCIES=true
+          export PRODUCT_NOTICE_SPLIT=true 
           export CKATI_FLAGS=--use_find_emulator
           export JACK_SERVER_VM_ARGUMENTS="-Xmx4096m"
           export PYTHON=python2
