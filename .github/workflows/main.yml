@@ -55,13 +55,13 @@ jobs:
 
       - name: Clone Rockchip Kernel Source
         run: |
-          echo "=== Cloning Rockchip Kernel 4.4 (phoenix-4.4 branch) ==="
+          echo "=== Cloning Rockchip Kernel 4.4 ==="
           
           # Create the path defined in your BoardConfig
           mkdir -p ~/android/lineage/kernel/denver
           
           # Clone official Rockchip Linux 4.4 source branch
-          git clone --branch develop-4.4 --depth=1 https://github.com/rockchip-linux/kernel.git ~/android/lineage/kernel/denver/TAQ90
+          git clone --branch develop-4.4 --depth=1 https://github.com/Tommy0412/kernel.git ~/android/lineage/kernel/denver/TAQ90
           
           echo "✅ Kernel source cloned to: ~/android/lineage/kernel/denver/TAQ90"
           ls -la ~/android/lineage/kernel/denver/TAQ90/arch/arm/configs/rockchip_defconfig || echo "⚠️ rockchip_defconfig not found!"
