@@ -274,29 +274,50 @@ jobs:
           export CCACHE_DIR=/home/runner/.ccache
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
-          ccache -M 5G  # Give it 5GB of space
-          ccache -z     # Reset statistics to 0 so we can see how many hits we get this run
+          ccache -M 5G
+          ccache -z
           
           source build/envsetup.sh
           lunch lineage_TAQ90-userdebug
+
+          # === RUČNO KOMPAJLIRANJE KERNELA (ROCKCHIP FIX) ===
+          echo "=== Pokrećem ručni build Rockchip kernela ==="
+          cd kernel/denver/TAQ90
           
-          # 'bacon' builds the system and packages it into a flashable ZIP
+          # Postavljanje kompajlera za ARM 32-bit
+          export ARCH=arm
+          export CROSS_COMPILE=../../../../prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+          
+          # Generiranje konfiguracije iz tvog ispravljenog defconfiga
+          make rockchip_defconfig
+          
+          # Kompajliranje zImage i DTB resursa
+          make -j$(nproc) zImage
+          make -j$(nproc) rockchip.img
+          
+          # Kopiranje svježe izgrađenih datoteka na mjesta gdje ih LineageOS prebuilt sustav očekuje
+          mkdir -p ../../../out/target/product/TAQ90/
+          mkdir -p ../../../out/target/product/TAQ90/obj/KERNEL_OBJ/
+          
+          cp arch/arm/boot/zImage ../../../out/target/product/TAQ90/kernel
+          cp resource.img ../../../out/target/product/TAQ90/obj/KERNEL_OBJ/resource.img
+          
+          echo "=== Ručni build kernela završen, vraćam se na LineageOS ==="
+          cd ~/android/lineage
+
+          # Sada pokrećemo standardni bacon build koji će samo pokupiti gotove datoteke
           make -j$(nproc) bacon || EXIT_CODE=$?
 
-          echo "=========================================="
-          echo "=== PROVJERA KERNEL_OBJ DIREKTORIJA ==="
-          echo "=========================================="
-          if [ -d "out/target/product/TAQ90/obj/KERNEL_OBJ" ]; then
-            ls -la out/target/product/TAQ90/obj/KERNEL_OBJ/
-          else
-            echo "Direktorij KERNEL_OBJ ne postoji!"
-          fi
-          
           # Show ccache statistics at the end to prove it's working!
           echo "=========================================="
-          echo "=== CCACHE STATISTICS (Look for 'Cache hit') ==="
+          echo "=== CCACHE STATISTICS ==="
           echo "=========================================="
           ccache -s
+
+          if [ ! -z "$EXIT_CODE" ]; then
+            echo "Build je završio s greškom: $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
 
       - name: Verify Cache Directory Exists Before Saving
         run: |
