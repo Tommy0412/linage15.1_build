@@ -100,7 +100,7 @@ jobs:
           cd ~/android/lineage
           git config --global user.email "build@ci.local"
           git config --global user.name "CI Build"
-          repo init -u https://github.com/LineageOS/android.git -b lineage-14.1 --depth=1
+          repo init -u https://github.com/LineageOS/android.git -b cm-14.1 --depth=1
 
       - name: Sync source
         run: |
