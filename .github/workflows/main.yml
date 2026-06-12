@@ -281,7 +281,16 @@ jobs:
           lunch lineage_TAQ90-userdebug
           
           # 'bacon' builds the system and packages it into a flashable ZIP
-          make -j$(nproc) bacon
+          make -j$(nproc) bacon || EXIT_CODE=$?
+
+          echo "=========================================="
+          echo "=== PROVJERA KERNEL_OBJ DIREKTORIJA ==="
+          echo "=========================================="
+          if [ -d "out/target/product/TAQ90/obj/KERNEL_OBJ" ]; then
+            ls -la out/target/product/TAQ90/obj/KERNEL_OBJ/
+          else
+            echo "Direktorij KERNEL_OBJ ne postoji!"
+          fi
           
           # Show ccache statistics at the end to prove it's working!
           echo "=========================================="
