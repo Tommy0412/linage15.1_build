@@ -52,16 +52,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu
           echo "✅ Cross-compilers installed"
-
-      - name: Clone Rockchip Kernel Source
-        run: |
-          echo "=== Cloning Rockchip Kernel 4.4 ==="
-          
-          # Create the path defined in your BoardConfig
-          mkdir -p ~/android/lineage/kernel/denver
-          
-          # Clone official Rockchip Linux 4.4 source branch
-          git clone --branch develop-4.4 --depth=1 https://github.com/Tommy0412/kernel.git ~/android/lineage/kernel/denver/TAQ90
           
           echo "✅ Kernel source cloned to: ~/android/lineage/kernel/denver/TAQ90"
           ls -la ~/android/lineage/kernel/denver/TAQ90/arch/arm/configs/rockchip_defconfig || echo "⚠️ rockchip_defconfig not found!"
@@ -124,6 +114,16 @@ jobs:
           cd ~/android/lineage
           repo sync -c --no-tags --no-clone-bundle --optimized-fetch \
             --prune --force-sync -j$(nproc)
+
+      - name: Clone Rockchip Kernel Source
+        run: |
+          echo "=== Cloning Rockchip Kernel 4.4 ==="
+          
+          # Create the path defined in your BoardConfig
+          mkdir -p ~/android/lineage/kernel/denver
+          
+          # Clone official Rockchip Linux 4.4 source branch
+          git clone --branch develop-4.4 --depth=1 https://github.com/Tommy0412/kernel.git ~/android/lineage/kernel/denver/TAQ90
 
       - name: Clone device tree
         run: |
@@ -274,50 +274,20 @@ jobs:
           export CCACHE_DIR=/home/runner/.ccache
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
-          ccache -M 5G
-          ccache -z
+          ccache -M 5G  # Give it 5GB of space
+          ccache -z     # Reset statistics to 0 so we can see how many hits we get this run
           
           source build/envsetup.sh
           lunch lineage_TAQ90-userdebug
-
-          # === RUČNO KOMPAJLIRANJE KERNELA (ROCKCHIP FIX) ===
-          echo "=== Pokrećem ručni build Rockchip kernela ==="
-          cd kernel/denver/TAQ90
           
-          # Postavljanje kompajlera za ARM 32-bit
-          export ARCH=arm
-          export CROSS_COMPILE=../../../../prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+          # 'bacon' builds the system and packages it into a flashable ZIP
+          make -j$(nproc) bacon
           
-          # Generiranje konfiguracije iz tvog ispravljenog defconfiga
-          make rockchip_defconfig
-          
-          # Kompajliranje zImage i DTB resursa
-          make -j$(nproc) zImage
-          make -j$(nproc) rockchip.img
-          
-          # Kopiranje svježe izgrađenih datoteka na mjesta gdje ih LineageOS prebuilt sustav očekuje
-          mkdir -p ../../../out/target/product/TAQ90/
-          mkdir -p ../../../out/target/product/TAQ90/obj/KERNEL_OBJ/
-          
-          cp arch/arm/boot/zImage ../../../out/target/product/TAQ90/kernel
-          cp resource.img ../../../out/target/product/TAQ90/obj/KERNEL_OBJ/resource.img
-          
-          echo "=== Ručni build kernela završen, vraćam se na LineageOS ==="
-          cd ~/android/lineage
-
-          # Sada pokrećemo standardni bacon build koji će samo pokupiti gotove datoteke
-          make -j$(nproc) bacon || EXIT_CODE=$?
-
           # Show ccache statistics at the end to prove it's working!
           echo "=========================================="
-          echo "=== CCACHE STATISTICS ==="
+          echo "=== CCACHE STATISTICS (Look for 'Cache hit') ==="
           echo "=========================================="
           ccache -s
-
-          if [ ! -z "$EXIT_CODE" ]; then
-            echo "Build je završio s greškom: $EXIT_CODE"
-            exit $EXIT_CODE
-          fi
 
       - name: Verify Cache Directory Exists Before Saving
         run: |
