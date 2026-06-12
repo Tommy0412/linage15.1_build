@@ -90,7 +90,6 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /home/runner/.ccache
-          # Koristimo drugi ključ da se ne miješa s cacheom od 15.1
           key: ccache-taq90-14.1-${{ runner.os }}
           restore-keys: |
             ccache-taq90-14.1-${{ runner.os }}
@@ -101,7 +100,6 @@ jobs:
           cd ~/android/lineage
           git config --global user.email "build@ci.local"
           git config --global user.name "CI Build"
-          # KLJUČNO: Promijenjeno u lineage-14.1
           repo init -u https://github.com/LineageOS/android.git -b lineage-14.1 --depth=1
 
       - name: Sync source
@@ -132,18 +130,15 @@ jobs:
         run: |
           cd ~/android/lineage
           
-          # 1. Fix Jack Server OOM crashes
           export JACK_SERVER_VM_ARGUMENTS="-Xmx4096m -Dfile.encoding=UTF-8"
           export ANDROID_JACK_VM_ARGS="-Xmx4096m"
           echo "✅ Jack server memory limited to 4GB"
           
-          # 2. Force Python 2
           export BUILD_PYTHON_VERSION=2
           export PYTHON=python2
           sudo ln -sf /usr/bin/python2.7 /usr/bin/python
           echo "✅ Python 2 forced globally"
           
-          # 3. Optimize ccache
           export USE_CCACHE=1
           export CCACHE_EXEC=/usr/bin/ccache
           ccache -M 3G
@@ -159,4 +154,102 @@ jobs:
           sudo sed -i 's/TLSv1, TLSv1.1, //g' /etc/java-8-openjdk/security/java.security || true
           
           echo "=== 2. Lowering OpenSSL 3.0 Security Level ==="
-          sudo sed -i 's/DEFAULT
+          sudo sed -i 's/DEFAULT@SECLEVEL=2/DEFAULT@SECLEVEL=0/g' /etc/ssl/openssl.cnf || true
+          sudo sed -i 's/DEFAULT@SECLEVEL=1/DEFAULT@SECLEVEL=0/g' /etc/ssl/openssl.cnf || true
+          
+          echo "=== 3. Cleaning up old Jack server state ==="
+          prebuilts/sdk/tools/jack-admin kill-server 2>/dev/null || true
+          rm -rf ~/.jack-server ~/.jack 2>/dev/null || true
+          echo "✅ Jack server SSL environment fixed"
+
+      - name: Bulletproof WebView Prebuilt Fix (Git LFS)
+        run: |
+          cd ~/android/lineage
+          WV_DIR="external/chromium-webview/prebuilt"
+          
+          echo "=== 1. Nuking old broken directory ==="
+          rm -rf "$WV_DIR/arm"
+          mkdir -p "$WV_DIR"
+          cd "$WV_DIR"
+          
+          echo "=== 2. Cloning with explicit branch and LFS ==="
+          git clone --branch lineage-14.1 --depth 1 https://github.com/LineageOS/android_external_chromium-webview_prebuilt_arm.git arm || \
+          git clone --branch cm-14.1 --depth 1 https://github.com/LineageOS/android_external_chromium-webview_prebuilt_arm.git arm || \
+          git clone --depth 1 https://github.com/LineageOS/android_external_chromium-webview_prebuilt_arm.git arm
+          
+          cd arm
+          git lfs install
+          git lfs pull
+          
+          echo "=== 3. CRITICAL: Verifying real APK size ==="
+          if [ -f "webview.apk" ]; then
+            APK_SIZE=$(stat -c%s "webview.apk" 2>/dev/null || echo 0)
+            if [ "$APK_SIZE" -gt 1000000 ]; then
+              echo "✅ SUCCESS: Real webview.apk downloaded!"
+              echo "   File size: $(ls -lh webview.apk | awk '{print $5}')"
+            else
+              echo "❌ FATAL ERROR: File is still too small ($APK_SIZE bytes)!"
+              exit 1
+            fi
+          else
+            echo "❌ FATAL ERROR: webview.apk not found!"
+            exit 1
+          fi
+
+      - name: Free Disk Space for Full ROM Build
+        run: |
+          cd ~/android/lineage
+          rm -rf out/target/common/obj/JAVA_LIBRARIES \
+               out/target/product/TAQ90/obj \
+               out/host/linux-x86/obj/SHARED_LIBRARIES \
+               out/host/linux-x86/obj/STATIC_LIBRARIES 2>/dev/null || true
+          echo "✅ Freed disk space. Current usage:"
+          df -h .
+
+      - name: Build Full LineageOS ROM (Bacon)
+        run: |
+          cd ~/android/lineage
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export JACK_SERVER_VM_ARGUMENTS="-Xmx4096m"
+          export PYTHON=python2
+          
+          export CCACHE_DIR=/home/runner/.ccache
+          export USE_CCACHE=1
+          export CCACHE_EXEC=/usr/bin/ccache
+          ccache -M 5G
+          ccache -z
+          
+          source build/envsetup.sh
+          lunch lineage_TAQ90-userdebug
+          
+          make -j$(nproc) bacon
+          
+          echo "=========================================="
+          echo "=== CCACHE STATISTICS ==="
+          echo "=========================================="
+          ccache -s
+
+      - name: Verify Cache Directory Exists Before Saving
+        run: |
+          if [ -d "/home/runner/.ccache" ]; then
+            echo "✅ Directory exists."
+            du -sh /home/runner/.ccache
+          else
+            echo "❌ FATAL: ccache missing!"
+            exit 1
+          fi
+
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v14.1-${{ github.run_number }}"
+          name: "Lineage 14.1 TAQ90 - Build #${{ github.run_number }}"
+          draft: false
+          prerelease: false
+          files: |
+            ~/android/lineage/out/target/product/TAQ90/lineage-*.zip
+            ~/android/lineage/out/target/product/TAQ90/recovery.img
+            ~/android/lineage/out/target/product/TAQ90/boot.img
+            ~/android/lineage/out/target/product/TAQ90/system.img
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
