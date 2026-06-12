@@ -66,18 +66,6 @@ jobs:
           echo "✅ Kernel source cloned to: ~/android/lineage/kernel/denver/TAQ90"
           ls -la ~/android/lineage/kernel/denver/TAQ90/arch/arm/configs/rockchip_defconfig || echo "⚠️ rockchip_defconfig not found!"
 
-      - name: Force Kernel to use rk3126-bnd-d708 DTB
-        run: |
-          echo "=== Forcing default device tree to rk3126-bnd-d708 ==="
-          
-          # Dodajemo konfiguraciju da koristi točan DTS za tvoj tablet
-          echo 'CONFIG_DEFAULT_DEVICE_TREE="rk3126-bnd-d708"' >> ~/android/lineage/kernel/denver/TAQ90/arch/arm/configs/rockchip_defconfig
-          
-          # Provjera je li dodano
-          grep "CONFIG_DEFAULT_DEVICE_TREE" ~/android/lineage/kernel/denver/TAQ90/arch/arm/configs/rockchip_defconfig
-          
-          echo "✅ Kernel će sada koristiti rk3126-bnd-d708.dtb kao zadani Device Tree!"
-
       - name: Fix libncurses for Android 8.1 Clang
         run: |
           sudo apt-get install -y libncurses5 libtinfo5 2>/dev/null || {
