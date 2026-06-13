@@ -313,7 +313,8 @@ jobs:
           files: |
             ~/android/lineage/out/target/product/TAQ90/lineage-*.zip
             ~/android/lineage/out/target/product/TAQ90/recovery.img
-            ~/android/lineage/out/target/product/TAQ90/boot.img
+            ~/android/lineage/out/target/product/TAQ90/kernel.img
+            ~/android/lineage/out/target/product/TAQ90/resource.img
             ~/android/lineage/out/target/product/TAQ90/vendor.img
             ~/android/lineage/out/target/product/TAQ90/system.img
         env:
